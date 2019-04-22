@@ -2,5 +2,7 @@
   "files.eol": "\n",
   "python.formatting.provider": "black",
   "python.linting.flake8Enabled": true,
-  "python.linting.pylintEnabled": false
+  "python.linting.pylintEnabled": false,
+  "python.linting.mypyEnabled": false,
+  "python.pythonPath": "venv/bin/python"
 }
