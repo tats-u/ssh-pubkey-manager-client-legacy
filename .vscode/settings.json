@@ -1,0 +1,6 @@
+{
+  "files.eol": "\n",
+  "python.formatting.provider": "black",
+  "python.linting.flake8Enabled": true,
+  "python.linting.pylintEnabled": false
+}

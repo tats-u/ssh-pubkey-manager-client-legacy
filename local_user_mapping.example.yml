@@ -1,0 +1,8 @@
+# グループ serveradmin またはユーザ ci-deploy はユーザ ci-deploy として公開鍵ログイン可能
+deploy:
+  - "@serveradmin"
+  - ci-deploy
+
+# グループ webadmin のユーザはユーザ git として公開鍵ログイン可能
+git:
+  - "@webadmin"

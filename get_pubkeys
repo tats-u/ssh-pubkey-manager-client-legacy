@@ -1,0 +1,160 @@
+#!/usr/bin/python3
+
+# sudo apt install mariadb-client python3-ldap3 python3-mysql.connector python3-yaml
+
+# :set expandtab
+# :set shiftwidth=4
+# :set softtabstop=4
+# :set autoindent
+# :set smartindent
+
+import sys
+
+try:
+    import ldap3
+except ImportError:
+    print(
+        "Warning: ldap3 module doesn't exist.  Install it by: sudo apt install python3-ldap3",
+        file=sys.stderr,
+    )
+    ldapAvailable = False
+else:
+    ldapAvailable = True
+from mysql import connector
+import subprocess
+import yaml
+
+if len(sys.argv) <= 1:
+    print("Usage: {} [username]".format(sys.argv[0]), file=sys.stderr)
+    exit(1)
+
+
+#################### 設定ここから ####################
+
+## データベースサーバ
+dbServer = "db"
+
+## データベースユーザ名
+dbUser = "pubkey_mgr_ro"
+
+## データベースパスワード
+dbPass = "pass"
+
+## データベース名
+dbName = "pubkey_manager"
+
+## LDAPのBind DN
+bindDN = "uid=root,cn=users,dc=ldap,dc=local"
+
+## LDAPのBase DN
+baseDN = "dc=ldap,dc=local"
+
+## LDAPのBind DNのパスワード
+ldapPass = "pass"
+
+## LDAPサーバ
+ldapServer = "ldap"
+
+## ローカルユーザ→LDAPユーザへのマッピングファイル(YAML)
+userMappingFile = "/etc/ssh/local_user_mapping.yml"
+
+#################### 設定ここまで ####################
+
+try:
+    dbConnectObj = connector.connect(
+        user=dbUser, password=dbPass, host=dbServer, database=dbName
+    )
+    dbCursor = dbConnectObj.cursor()
+    userName = sys.argv[1]
+    targetUIDs = [userName]
+    try:
+        with open(userMappingFile) as f:
+            mappingData = yaml.load(f)
+        if userName in mappingData:
+            userMappingData = mappingData[userName]
+            if isinstance(userMappingData, str):
+                userMappingData = [userMappingData]
+            elif not isinstance(userMappingData, list):
+                print(
+                    "Error: {} is not a string or list".format(
+                        userMappingData
+                    ),
+                    file=sys.stderr,
+                )
+                exit(1)
+            for uname in userMappingData:
+                if not isinstance(uname, str):
+                    print(
+                        "Error: {} is not a string".format(uname),
+                        file=sys.stderr,
+                    )
+                    exit(1)
+                elif len(uname) != 0:
+                    if uname[0] == "%" or uname[0] == "@":
+                        # getentコマンドでGit利用者グループのメンバーを取得
+                        getentResult = subprocess.run(
+                            ["getent", "group", uname[1:]],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                        )
+                        if getentResult.returncode == 0:
+                            # ↓形式: webadmin:x:番号:ユーザ名,ユーザ名,ユーザ名
+                            gitGroupMemberListEntry = getentResult.stdout.decode().rstrip(
+                                "\n"
+                            )
+                            lastColonIndex = gitGroupMemberListEntry.rfind(":")
+                            if lastColonIndex != -1:
+                                # ↓形式: ユーザ名,ユーザ名,ユーザ名
+                                gitGroupMemberListRaw = gitGroupMemberListEntry[
+                                    lastColonIndex + 1 :
+                                ]
+                                if len(gitGroupMemberListRaw) != 0:
+                                    targetUIDs.extend(
+                                        gitGroupMemberListRaw.split(",")
+                                    )
+                        elif (
+                            ldapAvailable and uname[0] == "@"
+                        ):  # getentで取得できない場合直接LDAPサーバから取得
+                            serverObj = ldap3.Server(
+                                ldapServer, get_info=ldap3.ALL
+                            )
+                            ldapConnectObj = ldap3.Connection(
+                                serverObj, bindDN, ldapPass, auto_bind=True
+                            )
+                            ldapGroupObj = ldap3.ObjectDef(
+                                "posixGroup"
+                            )  # グループはobjectClass=posixGroup
+                            ldapGroupObj += ldap3.AttrDef(
+                                "memberUid"
+                            )  # グループメンバのアカウント名はmemberUidエントリにて取得
+                            ldapReaderObj = ldap3.Reader(
+                                ldapConnectObj,
+                                ldapGroupObj,
+                                "(&(objectClass=posixGroup)(cn="
+                                + uname[1:]
+                                + "))",
+                                baseDN,
+                            )
+                            ldapGroupEntries = ldapReaderObj.search()
+                            if len(ldapGroupEntries) == 1:  # グループは1つしか見つからないはず
+                                targetUIDs.extend(
+                                    ldapGroupEntries[0]["memberUid"]
+                                )
+                    else:
+                        targetUIDs.append(uname)
+    except FileNotFoundError as e:
+        pass
+    dbCursor.execute(
+        "select key_type,key_content,key_comment from pubkeys where user_index in (select user_index from user_name where user_name in ("
+        + ",".join(("%s",) * len(targetUIDs))
+        + "))",
+        targetUIDs,
+    )
+    # rowはタプル
+    for row in dbCursor.fetchall():
+        print(" ".join(row))
+    dbCursor.close()
+    dbConnectObj.close()
+except Exception as e:
+    print(e, file=sys.stderr)
+    exit(1)

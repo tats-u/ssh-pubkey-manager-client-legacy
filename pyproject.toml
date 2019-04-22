@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "ssh-pubkey-manager-client-legacy"
+version = "0.1.0"
+description = "Client for login nodes for SSH public key manager (https://github.com/tats-u/ssh-pubkey-manager-legacy)"
+authors = ["Tatsunori Uchino <tats.u@live.jp>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.5"
+ldap3 = ">=1.0.3"
+mysql-connector-python = "^8.0"
+PyYAML = ">=3.11"
+
+[tool.poetry.dev-dependencies]
+black = '>=19'
+flake8 = ">=3"
+isort = ">=4"
+
+[tool.black]
+line-length = 88
+target-version = ['py37', 'py38']
+include = '(get_pubkeys|\.pyi?)$'
+
+[tool.isort]
+line-length = 88
+multi_line_output = 3
