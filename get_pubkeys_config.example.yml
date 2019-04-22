@@ -1,0 +1,18 @@
+# データベースのサーバ
+db_server: db
+# データベースのユーザ名
+db_user: root
+# データベースのパスワード
+db_pass: root
+# データベース名
+db_name: pubkey_manager
+# LDAPのBind DN
+bind_dn: uid=root,cn=users,dc=ldap,dc=local
+# LDAPのBase DN
+base_dn: cn=users,dc=ldap,dc=local
+# LDAPのBind DNのパスワード
+ldap_pass: password
+# LDAPサーバ
+ldap_server: ldap
+# ローカルユーザ→LDAPユーザへのマッピングファイル(YAML)
+user_mapping_file: ./local_user_mapping.yaml

@@ -8,7 +8,13 @@
 # :set autoindent
 # :set smartindent
 
+import os
+import subprocess
 import sys
+
+import yaml
+
+from mysql import connector
 
 try:
     import ldap3
@@ -20,9 +26,6 @@ except ImportError:
     ldapAvailable = False
 else:
     ldapAvailable = True
-from mysql import connector
-import subprocess
-import yaml
 
 if len(sys.argv) <= 1:
     print("Usage: {} [username]".format(sys.argv[0]), file=sys.stderr)
@@ -31,32 +34,37 @@ if len(sys.argv) <= 1:
 
 #################### 設定ここから ####################
 
+with open(
+    os.path.join(os.path.dirname(__file__), "get_pubkeys_config.yml")
+) as f:
+    global_config = yaml.safe_load(f)
+
 ## データベースサーバ
-dbServer = "db"
+dbServer = global_config["db_server"]
 
 ## データベースユーザ名
-dbUser = "pubkey_mgr_ro"
+dbUser = global_config["db_user"]
 
 ## データベースパスワード
-dbPass = "pass"
+dbPass = global_config["db_pass"]
 
 ## データベース名
-dbName = "pubkey_manager"
+dbName = global_config["db_name"]
 
 ## LDAPのBind DN
-bindDN = "uid=root,cn=users,dc=ldap,dc=local"
+bindDN = global_config["bind_dn"]
 
 ## LDAPのBase DN
-baseDN = "dc=ldap,dc=local"
+baseDN = global_config["base_dn"]
 
 ## LDAPのBind DNのパスワード
-ldapPass = "pass"
+ldapPass = global_config["ldap_pass"]
 
 ## LDAPサーバ
-ldapServer = "ldap"
+ldapServer = global_config["ldap_server"]
 
 ## ローカルユーザ→LDAPユーザへのマッピングファイル(YAML)
-userMappingFile = "/etc/ssh/local_user_mapping.yml"
+userMappingFile = global_config["user_mapping_file"]
 
 #################### 設定ここまで ####################
 
