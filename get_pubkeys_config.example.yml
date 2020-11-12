@@ -16,3 +16,5 @@ ldap_pass: password
 ldap_server: ldap
 # ローカルユーザ→LDAPユーザへのマッピングファイル(YAML)
 user_mapping_file: ./local_user_mapping.yaml
+# 接続タイムアウト (LDAP/MySQL)
+timeout: 1

@@ -66,11 +66,18 @@ ldapServer = global_config["ldap_server"]
 ## ローカルユーザ→LDAPユーザへのマッピングファイル(YAML)
 userMappingFile = global_config["user_mapping_file"]
 
+## タイムアウト
+timeout = global_config["timeout"]
+
 #################### 設定ここまで ####################
 
 try:
     dbConnectObj = connector.connect(
-        user=dbUser, password=dbPass, host=dbServer, database=dbName
+        user=dbUser,
+        password=dbPass,
+        host=dbServer,
+        database=dbName,
+        connection_timeout=timeout,
     )
     dbCursor = dbConnectObj.cursor()
     userName = sys.argv[1]
@@ -124,7 +131,9 @@ try:
                             ldapAvailable and uname[0] == "@"
                         ):  # getentで取得できない場合直接LDAPサーバから取得
                             serverObj = ldap3.Server(
-                                ldapServer, get_info=ldap3.ALL
+                                ldapServer,
+                                get_info=ldap3.ALL,
+                                connect_timeout=timeout,
                             )
                             ldapConnectObj = ldap3.Connection(
                                 serverObj, bindDN, ldapPass, auto_bind=True
@@ -150,7 +159,7 @@ try:
                                 )
                     else:
                         targetUIDs.append(uname)
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         pass
     dbCursor.execute(
         "select key_type,key_content,key_comment from pubkeys where user_index in (select user_index from user_name where user_name in ("
